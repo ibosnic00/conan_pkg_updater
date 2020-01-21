@@ -124,7 +124,7 @@ def main():
     conanfile_location = os.path.join(project_path, "conanfile.py")
     if (parsed_args.check_current_version):
         version = check_version_in_conanfile(conanfile_location)
-        exit(version)
+        print(version)
     else :
         parsed_version = parse_version(parsed_args.new_version)
         if (parsed_version != -1):
