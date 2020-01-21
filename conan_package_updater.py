@@ -12,6 +12,8 @@ def parse_args():
         "--server_version_file_path", default=False, help="activate if C++ server version is to be changed")
     parser.add_argument(
         "--new_version", help="new version of project (MAJOR.MINOR.PATCH)")
+    parser.add_argument(
+        "--check_current_version", action='store_true', help="check for current version in conanfile.py")
 
     return parser.parse_args()
 
@@ -58,6 +60,26 @@ def update_version_in_conanfile(file_name, new_version):
     f.close()
 
 
+def check_version_in_conanfile(file_name):
+    """ Searchs for version in file_name """
+    f = open(file_name, "r+")
+    read_version = 'default'
+    line_to_find = '    version ='
+    d = f.readlines()
+    f.seek(0)
+    for i in d:
+        if i.startswith(line_to_find):
+            version_start = i.find('"') + len('"')
+            version_end = i.rfind('"')
+            read_version = i[version_start:version_end]
+            f.write(i)
+        else:
+            f.write(i)
+    f.truncate()
+    f.close()
+    return read_version
+
+
 def parse_version(version):
     """ Parses version arguments and checks if format is ok"""
     parsed_version = {"major": 0, "minor": 0, "patch": 0}
@@ -99,23 +121,31 @@ def main():
     """ Main scheduler """
     parsed_args = parse_args()
     project_path = os.path.dirname(os.path.abspath(__file__))
-    parsed_version = parse_version(parsed_args.new_version)
-    if (parsed_version != -1):
-        conanfile_location = os.path.join(project_path, "conanfile.py")
-        update_version_in_conanfile(
-            conanfile_location, parsed_args.new_version)
-        cmakelists_location = os.path.join(project_path, "CMakeLists.txt")
-        update_version_in_cmakelists(
-            cmakelists_location, parsed_args.new_version)
-        if (parsed_args.server_version_file_path):
-            print("Parsed version: " + str(parsed_version))
-            server_file_path = os.path.join(
-                project_path, parsed_args.server_version_file_path)
-            change_string_in_line(server_file_path, "      major", parsed_version["major"], "{","}")
-            change_string_in_line(server_file_path, "      minor", parsed_version["minor"], "{","}")
-            change_string_in_line(server_file_path, "      patch", parsed_version["patch"], "{","}")
-    else:
-        print("Modify version and try again.")
+    conanfile_location = os.path.join(project_path, "conanfile.py")
+    if (parsed_args.check_current_version):
+        version = check_version_in_conanfile(conanfile_location)
+        exit(version)
+    else :
+        parsed_version = parse_version(parsed_args.new_version)
+        if (parsed_version != -1):
+            update_version_in_conanfile(
+                conanfile_location, parsed_args.new_version)
+            cmakelists_location = os.path.join(project_path, "CMakeLists.txt")
+            update_version_in_cmakelists(
+                cmakelists_location, parsed_args.new_version)
+            if (parsed_args.server_version_file_path):
+                print("Parsed version: " + str(parsed_version))
+                server_file_path = os.path.join(
+                    project_path, parsed_args.server_version_file_path)
+                change_string_in_line(
+                    server_file_path, "      major", parsed_version["major"], "{", "}")
+                change_string_in_line(
+                    server_file_path, "      minor", parsed_version["minor"], "{", "}")
+                change_string_in_line(
+                    server_file_path, "      patch", parsed_version["patch"], "{", "}")
+            exit(0)
+        else:
+            print("Modify version and try again.")
 
 
 main()
